@@ -6,15 +6,23 @@ from tools import create_retriever_tool_from_vectorstore
 from langchain_openai import OpenAIEmbeddings
 
 persist_directory = "./chroma_db"
-vectorstore = Chroma(
-    collection_name="rag-chroma",
-    embedding_function=OpenAIEmbeddings(),
-    persist_directory=persist_directory
-)
 
-tools = [create_retriever_tool_from_vectorstore(vectorstore)]
+try:
+    vectorstore = Chroma(
+        collection_name="rag-chroma",
+        embedding_function=OpenAIEmbeddings(),
+        persist_directory=persist_directory
+    )
+    tools = [create_retriever_tool_from_vectorstore(vectorstore)]
+except Exception as e:
+    print(f"Error creating vectorstore: {e}")
+    tools = None
 
-agent = Agent(model_type="openai", tools=tools)
+if tools:
+    agent = Agent(model_type="openai", tools=tools)
+else:
+    agent = Agent(model_type="openai")
+
 
 st.title("Agent Chat Bot")
 
