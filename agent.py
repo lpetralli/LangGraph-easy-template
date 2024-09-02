@@ -1,9 +1,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
-from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_core.messages import AIMessage, HumanMessage
 from LangGraph import build_graph
-import chromadb
 
 
 class Agent:
@@ -29,27 +27,3 @@ class Agent:
         graph_output = self.graph.invoke(initial_state)
         
         return graph_output["messages"]
-
-    @staticmethod
-    def initialize_vector_db(directory="docs/", collection_name="pdf_documents", persist_directory=".chromadb/"):
-        # Use PersistentClient as per the updated ChromaDB documentation
-        client = chromadb.PersistentClient(path=persist_directory)
-        embedding_func = OpenAIEmbeddings()
-        collection = client.get_or_create_collection(name=collection_name, embedding_function=embedding_func)
-
-        # Check if the collection already has documents
-        if collection.count() > 0:
-            print("Vector database already initialized.")
-            return collection
-
-        # Load PDFs and add to ChromaDB if the collection is empty
-        print("Initializing vector database...")
-        documents = load_pdfs(directory)
-        collection.add_documents(documents)
-        return collection
-
-# Function to load PDFs (can be placed in a utility module)
-def load_pdfs(directory):
-    from langchain.document_loaders import PyPDFLoader
-    pdf_loader = PyPDFLoader(directory)
-    return pdf_loader.load_and_split()
