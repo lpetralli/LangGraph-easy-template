@@ -6,3 +6,6 @@ streamlit
 langchain_community
 langsmith
 tavily-python
+pypdf
+chromadb
+langchain-chroma
