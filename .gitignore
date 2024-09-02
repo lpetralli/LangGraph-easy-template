@@ -1,6 +1,5 @@
 .env
 /easy-lang-env 
 __pycache__ 
-/docs
 /evals
 /chroma_db
