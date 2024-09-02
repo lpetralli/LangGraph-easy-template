@@ -1,5 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
+from langchain_core.messages import AIMessage, HumanMessage
 from LangGraph import build_graph  # Importa la función que construye el grafo
 
 class Agent:
@@ -22,8 +23,7 @@ class Agent:
         # Inicializar el estado con los mensajes proporcionados
         initial_state = {"messages": messages}
         
-        # Ejecutar el grafo y obtener la salida
+        # Ejecutar el grafo de manera síncrona y obtener la salida
         graph_output = self.graph.invoke(initial_state)
         
-        # Devolver los mensajes resultantes
         return graph_output["messages"]
