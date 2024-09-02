@@ -1,7 +1,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_core.messages import AIMessage, HumanMessage
-from LangGraph import build_graph  # Importa la función que construye el grafo
+from LangGraph import build_graph  
 
 class Agent:
     def __init__(self, model_type="openai", prompt="Be a helpful assistant", tools=None):

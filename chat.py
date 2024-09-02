@@ -1,9 +1,14 @@
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from agent import Agent  # Importa tu clase Agent
+from agent import Agent  
+from langchain_community.tools.tavily_search import TavilySearchResults
+
+# tools = None
+tools = [TavilySearchResults(max_results=1)]
+
 
 # Inicializa tu agente
-agent = Agent(model_type="groq")
+agent = Agent(model_type="openai", tools=tools)
 
 
 st.title("Agent Chat Bot")

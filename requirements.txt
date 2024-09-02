@@ -3,3 +3,6 @@ langgraph
 langchain-groq
 ipykernel
 streamlit
+langchain_community
+langsmith
+tavily-python
