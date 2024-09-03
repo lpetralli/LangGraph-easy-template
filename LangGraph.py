@@ -25,7 +25,7 @@ def build_graph(llm=None, prompt: str = "Be a helpful assistant", tools: list = 
             model = model.bind_tools(tools)
 
         messages = state["messages"]
-        messages = [{"role": "system", "content": system_prompt}] + messages
+        messages = [prompt.format_messages()[0]] + messages
         response = model.invoke(messages)
 
         return {"messages": [response]}

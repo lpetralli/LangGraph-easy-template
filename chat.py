@@ -22,10 +22,13 @@ except Exception as e:
     print(f"Error creating vectorstore: {e}")
     tools = None
 
+
+
 if tools:
-    agent = Agent(model_type="openai", tools=tools)
+    agent = Agent(model_type="openai", prompt=langsmith_client.pull_prompt("agent_prompt")
+, tools=tools)
 else:
-    agent = Agent(model_type="openai")
+    agent = Agent(model_type="openai", prompt=langsmith_client.pull_prompt("agent_prompt"))
 
 
 st.title("Agent Chat Bot")
