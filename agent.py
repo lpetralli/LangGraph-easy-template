@@ -2,8 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_core.messages import AIMessage, HumanMessage
 from LangGraph import build_graph
-
-
+\
 from langchain_core.tracers import EvaluatorCallbackHandler
 
 from typing import Optional
@@ -42,8 +41,10 @@ class HelpfulnessEvaluator(RunEvaluator):
 
 feedback_callback = EvaluatorCallbackHandler(evaluators=[HelpfulnessEvaluator()])
 
+
+
 class Agent:
-    def __init__(self, model_type="openai", prompt="Be a helpful assistant", tools=None):
+    def __init__(self, model_type="openai", prompt, tools=None):
         if model_type == "openai":
             self.model = ChatOpenAI(temperature=0, model_name="gpt-4o")
         elif model_type == "groq":
@@ -58,6 +59,7 @@ class Agent:
         self.graph = build_graph(llm=self.model, prompt=self.system_prompt, tools=self.tools)
 
     def invoke(self, messages):
+    
         # Initialize the state with the provided messages
         initial_state = {"messages": messages}
 

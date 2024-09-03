@@ -6,6 +6,7 @@ from tools import create_retriever_tool_from_vectorstore
 from langchain_openai import OpenAIEmbeddings
 from langsmith import Client
 from streamlit_feedback import streamlit_feedback
+from langchain_core.prompts import ChatPromptTemplate
 import re
 
 langsmith_client = Client()
@@ -22,13 +23,17 @@ except Exception as e:
     print(f"Error creating vectorstore: {e}")
     tools = None
 
-
+try:
+    template = langsmith_client.pull_prompt("agent_prompt")
+except Exception as e:
+    template = ChatPromptTemplate([
+        ("system", "Be a helpful assistant"),
+    ])
 
 if tools:
-    agent = Agent(model_type="openai", prompt=langsmith_client.pull_prompt("agent_prompt")
-, tools=tools)
+    agent = Agent(model_type="openai", prompt=template, tools=tools)
 else:
-    agent = Agent(model_type="openai", prompt=langsmith_client.pull_prompt("agent_prompt"))
+    agent = Agent(model_type="openai", prompt=template)
 
 
 st.title("Agent Chat Bot")
@@ -71,7 +76,7 @@ if prompt := st.chat_input("User input"):
     response_messages = agent.invoke(st.session_state.messages)
 
     # Update the session state with the new response
-    st.session_state.messages.extend(response_messages["messages"])
+    st.session_state.messages = response_messages["messages"]
 
     # Display only the last AI message with content
     last_message = response_messages["messages"][-1]
