@@ -45,9 +45,6 @@ for message in st.session_state.messages:
         with st.chat_message("user" if isinstance(message, HumanMessage) else "assistant"):
             st.markdown(message.content)
 
-
-
-
 # Function to delete runs matching the pattern
 def delete_runs_with_pattern(id):
     match = re.search(r'run-([a-f0-9-]+)-\d+', id)
@@ -57,8 +54,6 @@ def delete_runs_with_pattern(id):
             return uuid
         except Exception as e:
             print(f"Error deleting run {id}: {e}")
-
-
 
 # React to user input
 if prompt := st.chat_input("User input"):
