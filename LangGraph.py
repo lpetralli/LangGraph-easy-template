@@ -6,6 +6,7 @@ from langgraph.graph import StateGraph, END, add_messages
 
 ### ------- Graph function definition ------- ###
 
+
 def build_graph(llm=None, prompt: str = "Be a helpful assistant", tools: list = None):
 
     ### ------- State definition ------- ###
@@ -26,6 +27,7 @@ def build_graph(llm=None, prompt: str = "Be a helpful assistant", tools: list = 
         messages = state["messages"]
         messages = [{"role": "system", "content": system_prompt}] + messages
         response = model.invoke(messages)
+
         return {"messages": [response]}
 
     # Define a new graph
