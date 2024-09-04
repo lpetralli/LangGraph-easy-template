@@ -9,3 +9,4 @@ tavily-python
 pypdf
 chromadb
 langchain-chroma
+streamlit_feedback
