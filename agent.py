@@ -14,37 +14,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from evaluators import PIIEvaluator
+pii_callback = EvaluatorCallbackHandler(evaluators=[PIIEvaluator()])
 
-class HelpfulnessEvaluator(RunEvaluator):
-    def __init__(self):
-        self.evaluator = load_evaluator(
-            "score_string", criteria="helpfulness", normalize_by=10
-        )
-
-    def evaluate_run(
-        self, run: Run, example: Optional[Example] = None
-    ) -> EvaluationResult:
-        print(example)
-        if (
-            not run.inputs
-            or not run.inputs.get("messages")
-            or not run.outputs
-            or not run.outputs.get("messages")
-        ):
-            return EvaluationResult(key="helpfulness", score=None)
-        result = self.evaluator.evaluate_strings(
-            input=run.inputs["messages"], prediction=run.outputs["messages"]
-        )
-        return EvaluationResult(
-            **{"key": "helpfulness", "comment": result.get("reasoning"), **result}
-        )
-
-feedback_callback = EvaluatorCallbackHandler(evaluators=[HelpfulnessEvaluator()])
-
-
+from evaluators import TopicEvaluator
+topic_callback = EvaluatorCallbackHandler(evaluators=[TopicEvaluator()])
 
 class Agent:
-    def __init__(self, model_type="openai", prompt, tools=None):
+    def __init__(self, model_type="openai", prompt=None, tools=None):
         if model_type == "openai":
             self.model = ChatOpenAI(temperature=0, model_name="gpt-4o")
         elif model_type == "groq":
@@ -64,6 +41,6 @@ class Agent:
         initial_state = {"messages": messages}
 
         # Run the graph synchronously and obtain the output
-        graph_output = self.graph.invoke(initial_state, {"callbacks":[feedback_callback]})
+        graph_output = self.graph.invoke(initial_state, {"callbacks":[feedback_callback, pii_callback, topic_callback]})
         
         return graph_output
