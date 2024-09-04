@@ -31,30 +31,30 @@ class PIIEvaluator(RunEvaluator):
         ):
             return EvaluationResult(key="pii", score=None)
         result = self.evaluator.with_structured_output(PIIResult, method='json_schema').invoke(
-            PII_PROMPT_TEMPLATE.format_messages(messages=run.inputs["messages"])
+            PII_PROMPT_TEMPLATE.format_messages(messages=run.inputs["messages"][-1])
         )
         return EvaluationResult(
             **{"key": "pii", "comment": result.reasoning, "score": result.contains_pii}
         )
 
 TOPIC_PROMPT_TEMPLATE = ChatPromptTemplate.from_messages([
-    ("system", "You are an expert at analyzing conversations and identifying unanswered questions or unaddressed topics. Your task is to carefully compare the user's input with the AI's response and determine if any part of the user's query was not adequately addressed."),
+    ("system", "You are an expert at analyzing conversations and identifying when requested information is not available. Your task is to carefully compare the user's input with the AI's response and determine if the AI indicated that the requested information was not available in its knowledge base or documents."),
     ("human", """Analyze the following conversation:
 
 User Input: {input}
 
 AI Response: {output}
 
-Determine if there's any part of the user's input that wasn't adequately addressed in the AI response. Focus on:
-1. Specific questions left unanswered
-2. Topics or subjects mentioned by the user but not discussed in the response
-3. Requests for information that were not fulfilled
+Determine if the AI's response indicates that the requested information was not available in its knowledge base or documents. Focus on:
+1. Explicit statements about lack of information
+2. Indications that the AI cannot answer due to limited data
+3. Responses suggesting the information is beyond the AI's current knowledge
 """)
 ])
 
 class TopicResult(BaseModel):
-    new_topic_detected: bool = Field(..., description="Whether a new, unaddressed topic was detected")
-    explanation: str = Field(..., description="Explanation of the topic analysis")
+    information_unavailable: bool = Field(..., description="Whether the AI indicated that the requested information was not available")
+    explanation: str = Field(..., description="Explanation of the analysis")
 
 class TopicEvaluator(RunEvaluator):
     
@@ -70,14 +70,14 @@ class TopicEvaluator(RunEvaluator):
             or not run.outputs
             or not run.outputs.get("messages")
         ):
-            return EvaluationResult(key="new_topic", score=None)
+            return EvaluationResult(key="information_unavailable", score=None)
         
         result = self.evaluator.with_structured_output(TopicResult, method='json_schema').invoke(
-            TOPIC_PROMPT_TEMPLATE.format_messages(input=run.inputs["messages"], output=run.outputs["messages"])
+            TOPIC_PROMPT_TEMPLATE.format_messages(input=run.inputs["messages"][-1], output=run.outputs["messages"][-1])
         )
         
         return EvaluationResult(
-            key="new_topic",
+            key="information_unavailable",
             comment=result.explanation,
-            score=float(result.new_topic_detected)
+            score=float(result.information_unavailable)
         )
