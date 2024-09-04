@@ -41,6 +41,6 @@ class Agent:
         initial_state = {"messages": messages}
 
         # Run the graph synchronously and obtain the output
-        graph_output = self.graph.invoke(initial_state, {"callbacks":[feedback_callback, pii_callback, topic_callback]})
+        graph_output = self.graph.invoke(initial_state, {"callbacks":[pii_callback, topic_callback]})
         
         return graph_output
