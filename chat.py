@@ -27,7 +27,7 @@ try:
     template = langsmith_client.pull_prompt("agent_prompt")
 except Exception as e:
     template = ChatPromptTemplate([
-        ("system", "Be a helpful assistant"),
+        ("system", "You are a helpful assistant for a company called TechnoVerde S.A. Para preguntas relacionadas a la empresa, responde utilizando la informacion que tenes disponible sobre la misma, no inventes informacion. Si no conoces la respuesta, simplemente decí que no lo sabes y disculpate por no poder ayudar"),
     ])
 
 if tools:
