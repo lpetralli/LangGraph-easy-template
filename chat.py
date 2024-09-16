@@ -2,7 +2,7 @@ import streamlit as st
 from agent import Agent
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_chroma import Chroma
-from tools import create_retriever_tool_from_vectorstore
+from tools import create_retriever_tool_from_vectorstore, create_get_client_info_tool
 from langchain_openai import OpenAIEmbeddings
 from langsmith import Client
 from streamlit_feedback import streamlit_feedback
@@ -18,7 +18,7 @@ try:
         embedding_function=OpenAIEmbeddings(),
         persist_directory=persist_directory
     )
-    tools = [create_retriever_tool_from_vectorstore(vectorstore)]
+    tools = [create_retriever_tool_from_vectorstore(vectorstore), create_get_client_info_tool()]
 except Exception as e:
     print(f"Error creating vectorstore: {e}")
     tools = None
@@ -27,7 +27,7 @@ try:
     template = langsmith_client.pull_prompt("agent_prompt")
 except Exception as e:
     template = ChatPromptTemplate([
-        ("system", "You are a helpful assistant for a company called TechnoVerde S.A. Para preguntas relacionadas a la empresa, responde utilizando la informacion que tenes disponible sobre la misma, no inventes informacion. Si no conoces la respuesta, simplemente decí que no lo sabes y disculpate por no poder ayudar"),
+        ("system", "Sos un asistente que responde preguntas sobre la empresa TechnoVerde S.A. Para preguntas relacionadas a la empresa, responde utilizando la informacion que tenes disponible sobre la misma, no inventes informacion. Si no conoces la respuesta, simplemente decí que no lo sabes y disculpate por no poder ayudar"),
     ])
 
 if tools:
