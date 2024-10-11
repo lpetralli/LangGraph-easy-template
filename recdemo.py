@@ -1,137 +1,109 @@
-from langchain.tools.retriever import create_retriever_tool
-
-def create_retriever_tool_from_vectorstore(vectorstore):
-    retriever = vectorstore.as_retriever()
-    return create_retriever_tool(
-        retriever,
-        "retrieve_company_docs",
-        "Search and return information about the company documents",
-    )
-
-from typing import Dict
-from pydantic import BaseModel, Field
-from langchain.tools import BaseTool
-
-class ClientInfoInput(BaseModel):
-    client_id: str = Field(..., description="The unique identifier of the client")
-
-class ClientInfoOutput(BaseModel):
-    name: str
-    email: str
-    account_balance: float
-    installed_products: list
-    sustainability_score: float
-
-class GetClientInfoTool(BaseTool):
-    name = "get_client_info"
-    description = "Retrieves client information for TechnoVerde S.A. customers based on the provided client ID"
-    args_schema = ClientInfoInput
-
-    def _run(self, client_id: str) -> Dict:
-        # Mocked client data for TechnoVerde S.A.
-        mock_client_data = {
-            "TV001": {
-                "name": "María González",
-                "email": "maria@ecohome.com",
-                "account_balance": 2500.0,
-                "installed_products": ["Solar Panels", "Smart Thermostat"],
-                "sustainability_score": 8.5
-            },
-            "TV002": {
-                "name": "Carlos Rodríguez",
-                "email": "carlos@greenbusiness.com",
-                "account_balance": 10000.0,
-                "installed_products": ["Energy Management System", "LED Lighting"],
-                "sustainability_score": 9.2
-            },
-            "TV003": {
-                "name": "Ana Martínez",
-                "email": "ana@sustainablefuture.org",
-                "account_balance": 5000.0,
-                "installed_products": ["Water Conservation System", "Electric Vehicle Charger"],
-                "sustainability_score": 7.8
-            },
-        }
-
-        if client_id not in mock_client_data:
-            raise ValueError(f"TechnoVerde S.A. client with ID {client_id} not found")
-
-        client_info = mock_client_data[client_id]
-        return ClientInfoOutput(**client_info).dict()
-
-def create_get_client_info_tool():
-    return GetClientInfoTool()
+import streamlit as st
+from agent import Agent
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from langchain_core.prompts import ChatPromptTemplate
+from tools import create_filter_itineraries_tool
+import json
 
 
 
-from typing import Literal, Optional, Union, List
+nora_prompt = """
 
-recommendations = {
-    "weather": {
-        "warm": {
-            "header": "Warm Destinations",
-            "image": "https://img.freepik.com/free-photo/beautiful-tropical-beach-sea-with-coconut-palm-tree-paradise-island_74190-2206.jpg",
-            "description": "Sunny beaches and tropical paradises for those seeking warmth and relaxation"
-        },
-        "cold": {
-            "header": "Cold Destinations",
-            "image": "https://img.freepik.com/free-photo/romantic-portrait-woman-white-dress-sailing-large-boat-ferry_343596-2643.jpg?t=st=1728570886~exp=1728574486~hmac=c8789ae592df118e04d779026e7e787d9f8f2026509940e5a267fae84d615125&w=1380",
-            "description": "Snowy landscapes and winter wonderlands for adventure seekers and snow enthusiasts"
-        }
-    },
-    "destination": {
-        "beach": {
-            "header": "Beach Getaway",
-            "image": "https://img.freepik.com/free-photo/empty-sea-beach-background_74190-313.jpg?t=st=1728570972~exp=1728574572~hmac=3b36753278983aaf2ced5309d7106c9d2c8b941ddb0ca7d80e4cf23558acb1c9&w=1380",
-            "description": "Relaxing beach destination for a peaceful getaway"
-        },
-        "mountain": {
-            "header": "Mountain Retreat",
-            "image": "https://img.freepik.com/free-photo/breathtaking-view-snowy-mountains-cloudy-sky-patagonia-chile_181624-9696.jpg?t=st=1728571010~exp=1728574610~hmac=347392b917bdd215ea2887333d224b92c0f242b003bf631f4e59160ad9aff551&w=1380",
-            "description": "Exciting mountain destination with breathtaking views"
-        }
-    },
-    "activities": {
-        "with": {
-            "header": "Adventure Activities",
-            "image": "https://img.freepik.com/free-photo/girls-looking-something-forest_23-2147617377.jpg?t=st=1728571051~exp=1728574651~hmac=dbf4be11c9f520c3b49e38510df9d3bb0fc8c6ecefa1abb49af94d18ba995172&w=1380   ",
-            "description": "Destinations with plenty of exciting activities"
-        },
-        "without": {
-            "header": "Relaxation",
-            "image": "https://img.freepik.com/free-photo/young-man-relax-bed-enjoying-mountain-view_1423-236.jpg?t=st=1728571077~exp=1728574677~hmac=f7e6fac257df211d06cfcdff793e9bd3522215d5245392871b2e05892283f07a&w=1380",
-            "description": "Peaceful destinations for ultimate relaxation"
-        }
-    }
-}
+You are Nora, a proactive and enthusiastic sales agent. Your primary goal is to help guests find their ideal itinerary. 
+
+Core Responsibilities:
+
+- Take initiative in the conversation, actively suggesting and showcasing itineraries. Don't wait for the user to ask for recommendations, just start recommending with random filters using the filter_itineraries tool. Start by using only one filter to show initial options. 
+- Use a friendly, engaging tone to create excitement about potential itineraries.
+- Keep answers short, do not be very verbose. 
+- Your main task is to make the user pick one itineray. You will win a BIG PRIZE if you make it. 
 
 
-class ShowRecommendationsInput(BaseModel):
-    recommendation_type: Literal["weather", "destination", "activities"] = Field(..., description="The type of recommendation to show.")
+Conversation Tips:
 
-class ShowRecommendationsTool(BaseTool):
-    name = "show_recommendations"
-    description = "Use this tool to show travel recommendations based on the specified type: 'weather', 'destination', or 'activities'."
-    args_schema = ShowRecommendationsInput
+- If the guest shows interest, guide them towards deciding the missing details (weather, destination, activities, budget, etc).
+- If they're unsure, offer to explore different combinations of filters.
+- DO NOT to use markdown in your responses, it's better to use natural language.
+- DO NOT list the returned itineraries from the tool, instead mention some of them with a salesly tone, trying to convince the guest to pick it and explaining the filters you applied. 
 
-    def _run(self, recommendation_type: str) -> str:
-        if recommendation_type not in recommendations:
-            return f"No recommendations available for {recommendation_type}"
 
-        options = recommendations[recommendation_type]
-        result = f"Recommendations for {recommendation_type}:\n\n"
+Using the filter_itineraries Tool:
 
-        for option_key, option_data in options.items():
-            result += f"- {option_data['header']}:\n"
-            #result += f"  Image: {option_data['image']}\n"
-            result += f"  Description: {option_data['description']}\n\n"
+Call the tool once per interaction, using one or more filters as args. You can use multiple values for each category. 
 
-        return result
+Here are the available options:
 
-def create_show_recommendations_tool():
-    return ShowRecommendationsTool()
+- Weather: ["tropical", "temperate", "polar"]
+- Destination: ["beach", "mountain", "city", "countryside", "island"]
+- Activities: ["adventure", "relaxation", "cultural", "family", "romantic", "wildlife", "entertainment", "sports", "wellness"]
+- Budget: ["economy", "standard", "premium", "luxury", "ultra_luxury"]
 
-# Filter Itineraries
+
+If the guest requests different itineraries, you may use the tool from scratch with updated parameters.
+
+You should always try to use the tool to showcase filtered itineraries. This is your main selling tool. Use the information you have about itineraries to create your convincing sales pitch. 
+
+Remember to adapt your recommendations based on the filtered results and the guest's preferences.
+"""
+
+template = ChatPromptTemplate([
+        ("system", nora_prompt),
+    ])
+
+tools = [create_filter_itineraries_tool()]
+
+if tools:
+    agent = Agent(model_type="openai", prompt=template, tools=tools)
+else:
+    agent = Agent(model_type="openai", prompt=template)
+
+
+st.title("Nora Recommendations Demo")
+
+
+
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
+
+# Display all previous chat messages
+for message in st.session_state.messages:
+    if isinstance(message, (HumanMessage, AIMessage)) and message.content:
+        with st.chat_message("user" if isinstance(message, HumanMessage) else "assistant"):
+            st.markdown(message.content)
+
+
+# React to user input
+if prompt := st.chat_input("User input"):
+    # Create a HumanMessage and add it to chat history
+    human_message = HumanMessage(content=prompt)
+    st.session_state.messages.append(human_message)
+
+    # Display user message in chat message container
+    st.chat_message("user").markdown(prompt)
+
+    # Invoke the agent to get a list of AI messages, including potentially retrieved documents
+    response_messages = agent.invoke(st.session_state.messages)
+
+    # Update the session state with the new response
+    st.session_state.messages = response_messages["messages"]
+
+    # Display only the last AI message with content
+    last_message = response_messages["messages"][-1]
+
+    if isinstance(last_message, AIMessage) and last_message.content:
+        st.chat_message("assistant").markdown(last_message.content)
+
+
+#st.write(st.session_state.messages)
+
+
+
+# Sidebar for recommendations
+
+
 
 itineraries = [
     {
@@ -385,59 +357,85 @@ itineraries = [
         "description": "Experience dune bashing 🏜️ and cultural shows 🐪 in the desert."
     }
 ]
+def filter_itineraries(weather=None, destination=None, activities=None, budget=None):
+    """
+    Filter itineraries based on specified conditions.
+    
+    Args:
+    weather (str or list, optional): The desired weather condition(s).
+    destination (str or list, optional): The desired destination type(s).
+    activities (list, optional): A list of desired activities.
+    budget (str or list, optional): The desired budget level(s).
+    
+    Returns:
+    list: A list of itineraries that match the specified conditions.
+    """
+    filtered_itins = itineraries
 
-class FilterItinerariesInput(BaseModel):
-    weather: Optional[List[Literal["tropical", "temperate", "polar"]]] = Field(None, description="The desired weather condition(s). Choose from tropical, temperate, or polar.")
-    destination: Optional[List[Literal["beach", "mountain", "city", "countryside", "island"]]] = Field(None, description="The desired destination type(s). Choose from beach, mountain, city, countryside, or island.")
-    activities: Optional[List[Literal["adventure", "relaxation", "cultural", "family", "romantic", "wildlife", "entertainment", "sports", "wellness"]]] = Field(None, description="A list of desired activities. Choose from adventure, relaxation, cultural, family, romantic, wildlife, entertainment, sports, or wellness.")
-    budget: Optional[List[Literal["economy", "standard", "premium", "luxury", "ultra_luxury"]]] = Field(None, description="The desired budget level(s). Choose from economy, standard, premium, luxury, or ultra_luxury.")
 
-class FilterItinerariesTool(BaseTool):
-    name = "filter_itineraries"
-    description = "Use this tool to show itineraries based on weather, destination, activities, and budget filters"
-    args_schema = FilterItinerariesInput
+    def filter_condition(itin, key, value):
+        if isinstance(value, list):
+            return itin.get(key) in value
+        return itin.get(key) == value
 
-    def filter_itineraries(self, weather=None, destination=None, activities=None, budget=None):
-        filtered_itins = itineraries
+    for key, value in [('weather', weather), ('destination', destination), ('budget', budget)]:
+        if value:
+            filtered_itins = [itin for itin in filtered_itins if filter_condition(itin, key, value)]
+    
+    if activities:
+        filtered_itins = [itin for itin in filtered_itins if any(activity in itin.get('activities', []) for activity in activities)]
+    
+    return filtered_itins
 
-        def filter_condition(itin, key, value):
-            if isinstance(value, list):
-                return itin.get(key) in value
-            return itin.get(key) == value
-
-        for key, value in [('weather', weather), ('destination', destination), ('budget', budget)]:
-            if value:
-                filtered_itins = [itin for itin in filtered_itins if filter_condition(itin, key, value)]
+def render_recommendations(filtered_itineraries):
+    with st.sidebar:
+        st.markdown("## Recommended Itineraries")
         
-        if activities:
-            filtered_itins = [itin for itin in filtered_itins if any(activity in itin.get('activities', []) for activity in activities)]
-        
-        return filtered_itins
+        with st.spinner("Loading recommendations..."):
+            import time
+            time.sleep(2)
+            if filtered_itineraries:
+                for itin in filtered_itineraries:
+                    st.subheader(itin["name"])
+                    st.image(itin["image"], use_column_width=True)
+                    st.write(itin["description"])
+                    #st.write(f"Weather: {itin['weather'].capitalize()}")
+                    #st.write(f"Destination: {itin['destination'].capitalize()}")
+                    #st.write(f"Activities: {', '.join(itin['activities'])}")
+                    #st.write(f"Budget: {itin['budget'].capitalize()}")
+                    st.markdown("---")
+            else:
+                st.write("No itineraries match your criteria. Try adjusting your preferences.")
 
-    def _run(self, weather: Optional[Union[str, List[str]]] = None, 
-             destination: Optional[Union[str, List[str]]] = None, 
-             activities: Optional[List[str]] = None, 
-             budget: Optional[Union[str, List[str]]] = None) -> str:
-        
-        # Log or validate the input arguments
-        print(f"Running with weather: {weather}, destination: {destination}, activities: {activities}, budget: {budget}")
-        
-        filtered_itins = self.filter_itineraries(weather, destination, activities, budget)
-        
-        result = "Filtered Itineraries:\n\n"
-        for itin in filtered_itins:
-            result += f"Name: {itin['name']}\n"
-            result += f"Weather: {itin['weather']}\n"
-            result += f"Destination: {itin['destination']}\n"
-            result += f"Activities: {', '.join(itin['activities'])}\n"
-            result += f"Budget: {itin['budget']}\n"
-            result += f"Description: {itin['description']}\n\n"
-        
-        return result
+# Always keep the sidebar open
+with st.sidebar:
+    st.markdown("Nora's Board 📋")
 
-def create_filter_itineraries_tool():
-    return FilterItinerariesTool()
+# Initialize a set to track rendered tool call IDs if it doesn't exist
+if 'rendered_tool_call_ids' not in st.session_state:
+    st.session_state['rendered_tool_call_ids'] = set()
 
-
-
-
+# Check the session state for AI messages with tool calling
+if 'messages' in st.session_state:
+    for i, msg in enumerate(st.session_state['messages']):
+        if isinstance(msg, AIMessage) and msg.additional_kwargs.get('tool_calls'):
+            tool_calls = msg.additional_kwargs['tool_calls']
+            
+            for tool_call in tool_calls:
+                if tool_call['function']['name'] == 'filter_itineraries':
+                    try:
+                        args = json.loads(tool_call['function']['arguments'])
+                        call_id = tool_call['id']
+                        
+                        # Check if the next message is a ToolMessage with the same tool_call_id
+                        if i + 1 < len(st.session_state['messages']):
+                            next_msg = st.session_state['messages'][i + 1]
+                            if isinstance(next_msg, ToolMessage) and next_msg.tool_call_id == call_id:
+                                # Only render recommendations if this tool call ID hasn't been rendered before
+                                if call_id not in st.session_state['rendered_tool_call_ids']:
+                                    filtered_itins = filter_itineraries(**args)
+                                    render_recommendations(filtered_itins)
+                                    # Add the tool call ID to the set of rendered IDs
+                                    st.session_state['rendered_tool_call_ids'].add(call_id)
+                    except json.JSONDecodeError:
+                        st.error("Error parsing itinerary filter arguments")
