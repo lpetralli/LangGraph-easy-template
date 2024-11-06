@@ -229,8 +229,8 @@ def get_itins_to_display_from_messages():
             if tool_call_id and tool_call_id != st.session_state["last_pinecone_search_id"]:
                 st.session_state["last_pinecone_search_id"] = tool_call_id
                 with st.spinner('Searching for the best itineraries...'):
-                    time.sleep(3)
-                    st.success("Done!")
+                    time.sleep(2)
+                    #st.success("Done!")
             return json.loads(message.content)
     return []
 
@@ -326,7 +326,7 @@ else:
         st.markdown("<h4>🚢 Some recommendations based on the selected filters...</h4>", unsafe_allow_html=True)
         display_itineraries(filtered_itineraries_list)
     else:
-        st.write("We couldn't find itineraries that match your preferences... but here are some alternatives!")
+        st.markdown("<h4>😞 We couldn't find itineraries that match your preferences... but here are some alternatives!</h4>", unsafe_allow_html=True)
         display_itineraries(itineraries_list)
 
 # ------------------------------------------   END OF SIDE PANEL TO DISPLAY ITINERARIES   ------------------------------------------------------
