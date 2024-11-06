@@ -29,6 +29,7 @@ def build_graph(llm=None, prompt: str = "Be a helpful assistant", tools: list = 
         response = model.invoke(messages)
 
         return {"messages": [response]}
+    
 
     # Define a new graph
     workflow = StateGraph(AgentState)

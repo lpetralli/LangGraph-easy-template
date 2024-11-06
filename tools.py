@@ -438,6 +438,83 @@ class FilterItinerariesTool(BaseTool):
 def create_filter_itineraries_tool():
     return FilterItinerariesTool()
 
+#------------------------------------------------------------------------------------------------
+
+from typing import Dict, Any
+from pydantic import BaseModel, Field
+from langchain.tools import BaseTool
+from langchain_openai import OpenAIEmbeddings
+from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone
+
+class PineconeSearchInput(BaseModel):
+    query: str = Field(..., description="The english written query to search for in the Pinecone index")
+
+class PineconeSearchTool(BaseTool):
+    name: str = "pinecone_search"
+    description: str = "Search for itineraries based on a query that summarizes the user's preferences in first person based on the conversation history"
+    args_schema: type[BaseModel] = PineconeSearchInput
+    vector_store: PineconeVectorStore = Field(exclude=True)
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        index_name = "ncl-full-itineraries"
+        pc = Pinecone()
+        existing_indexes = [index_info["name"] for index_info in pc.list_indexes()]
+        
+        if index_name in existing_indexes:
+            index = pc.Index(index_name)
+        else:
+            raise ValueError(f"Index '{index_name}' does not exist. Please create it first.")
+        
+        self.vector_store = PineconeVectorStore(
+            index=index,
+            embedding=OpenAIEmbeddings(model="text-embedding-3-large")
+        )
+
+    def _run(self, query: str) -> list:
+        results = self.vector_store.similarity_search_with_score(query, k=25)
+        
+        # Define a score threshold
+        score_threshold = 0.500
+        
+        # Format results as a list of dicts with each metadata of the returned results
+        formatted_results = []
+        for doc, score in results:
+            if score >= score_threshold:
+                formatted_results.append(doc.metadata)
+        
+        return formatted_results
+
+def create_pinecone_search_tool() -> PineconeSearchTool:
+    return PineconeSearchTool()
+
+
+#------------------------------------------------------------------------------------------------
+import datetime
+
+class DateFilterInput(BaseModel):
+    start_date: str = Field(..., description="The start date in mm/dd/yyyy format")
+    end_date: str = Field(..., description="The end date in mm/dd/yyyy format")
+
+class DateFilterTool(BaseTool):
+    name: str = "date_filter"
+    description: str = "Filter itineraries based on start and end dates after having performed a search"
+    args_schema: type[BaseModel] = DateFilterInput
+
+    def _run(self, start_date: str, end_date: str) -> Dict[str, Any]:
+        # start_date_obj = datetime.datetime.strptime(start_date, "%m/%d/%Y").date()
+        # end_date_obj = datetime.datetime.strptime(end_date, "%m/%d/%Y").date()
+        
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+
+def create_date_filter_tool() -> DateFilterTool:
+    return DateFilterTool()
+
+
 
 
 
