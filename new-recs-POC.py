@@ -108,13 +108,6 @@ with st.sidebar:
 
 # ------------------------------------------    FILTERS   ------------------------------------------------------
 
-# Initialize filter session states as empty if not already set
-if "start_date" not in st.session_state:
-    st.session_state["start_date"] = None
-
-if "end_date" not in st.session_state:
-    st.session_state["end_date"] = None
-
 if "selected_activities" not in st.session_state:
     st.session_state["selected_activities"] = []
 
@@ -123,41 +116,66 @@ if "selected_destinations" not in st.session_state:
 
 if "selected_budgets" not in st.session_state:
     st.session_state["selected_budgets"] = []
+    
+# Initialize filter session states
+if "start_date" not in st.session_state:
+    st.session_state["start_date"] = None
 
-# Before displaying the filters, we check if Nora wants to change the dates
+if "end_date" not in st.session_state:
+    st.session_state["end_date"] = None
+
+if "last_date_filter_id" not in st.session_state:
+    st.session_state["last_date_filter_id"] = None
+
+
+def handle_date_change():
+    # Update main state from input state
+    st.session_state["start_date"] = st.session_state["start_date_input"]
+    st.session_state["end_date"] = st.session_state["end_date_input"]
 
 def get_dates_from_date_filter_tool():
     import json
-    if "last_date_filter_id" not in st.session_state:
-        st.session_state["last_date_filter_id"] = None
-
     for message in reversed(st.session_state.messages):
-        if isinstance(message, ToolMessage) and message.name == "date_filter" and message.content:
-            tool_call_id = message.tool_call_id
-            if tool_call_id and tool_call_id != st.session_state["last_date_filter_id"]:
-                st.session_state["last_date_filter_id"] = tool_call_id
-                dates = json.loads(message.content)
-                # Assuming the first itinerary's sailing dates are used for the date filter
-                start_date = datetime.datetime.strptime(dates["start_date"], "%m/%d/%Y").date()
-                end_date = datetime.datetime.strptime(dates["end_date"], "%m/%d/%Y").date()
-                st.session_state["start_date"] = start_date
-                st.session_state["end_date"] = end_date
+        tool_call_id = message.tool_call_id if isinstance(message, ToolMessage) else None
+        if isinstance(message, ToolMessage) and message.name == "date_filter" and message.content and tool_call_id and tool_call_id != st.session_state["last_date_filter_id"]:
+            #st.write(f"Tool call ID: {tool_call_id}, Last date filter ID: {st.session_state['last_date_filter_id']}")
+            st.session_state["last_date_filter_id"] = tool_call_id
+            dates = json.loads(message.content)
+            # Update both main state and input state
+            start_date = datetime.datetime.strptime(dates["start_date"], "%m/%d/%Y").date()
+            end_date = datetime.datetime.strptime(dates["end_date"], "%m/%d/%Y").date()
+            st.session_state["start_date"] = start_date
+            st.session_state["end_date"] = end_date
 
+            return dates
+    return None
+                
+                
 
-get_dates_from_date_filter_tool()
+# Check for AI updates first
+ai_dates = get_dates_from_date_filter_tool()
 
-
-# Add hard filters above the chat
+# Display date inputs
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    st.session_state["start_date"] = st.date_input("Start Date", value=st.session_state["start_date"])
+    st.date_input(
+        "Start Date",
+        value=st.session_state["start_date"],
+        key="start_date_input",
+        on_change=handle_date_change
+    )
 
 with col2:
-    st.session_state["end_date"] = st.date_input("End Date", value=st.session_state["end_date"])
+    st.date_input(
+        "End Date",
+        value=st.session_state["end_date"],
+        key="end_date_input",
+        on_change=handle_date_change
+    )
 
 with col3:
-    st.session_state["selected_activities"] = st.multiselect(
+    st.session_state["selected_activities"] = st.multiselect(   
         "Activities",
         options=[
             "relaxation",
@@ -204,6 +222,8 @@ with col5:
 
 # st.write("Start Date:", st.session_state["start_date"])
 # st.write("End Date:", st.session_state["end_date"])
+# if ai_dates:
+#     st.write("AI Dates:", ai_dates)
 # st.write("Selected Activities:", st.session_state["selected_activities"])
 # st.write("Selected Destinations:", st.session_state["selected_destinations"])
 # st.write("Selected Budgets:", st.session_state["selected_budgets"])
@@ -327,6 +347,7 @@ else:
         display_itineraries(filtered_itineraries_list)
     else:
         st.markdown("<h4>😞 We couldn't find itineraries that match your preferences... but here are some alternatives!</h4>", unsafe_allow_html=True)
+        st.markdown("---")
         display_itineraries(itineraries_list)
 
 # ------------------------------------------   END OF SIDE PANEL TO DISPLAY ITINERARIES   ------------------------------------------------------
